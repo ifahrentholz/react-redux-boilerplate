@@ -2,12 +2,14 @@ import { createStore, combineReducers, applyMiddleware } from "redux";
 import axios from "axios";
 import thunk from "redux-thunk";
 import logger from 'redux-logger';
+import promise from "redux-promise-middleware";
 
 
 const actions = {
   CHANGE_USER_NAME: "CHANGE_USER_NAME",
   CHANGE_USER_AGE: "CHANGE_USER_AGE",
-  FETCH_START: "FETCH_START",
+  FETCH_USER: "FETCH_USER",
+  FETCH_USER_PENDING: "FETCH_USER_PENDING",
   FETCH_USER_REJECTED: "FETCH_USER_REJECTED",
   FETCH_USER_FULFILLED: "FETCH_USER_FULFILLED",
 };
@@ -23,7 +25,7 @@ const intialUserState = [
 const userReducer = (state = intialUserState, action) => {
   switch (action.type) {
     case actions.FETCH_USER_FULFILLED:
-      state = state.concat(action.payload);
+      state = state.concat(action.payload.data);
       break;
     case actions.FETCH_USER_REJECTED:
       state = { ...state, error: action.payload }
@@ -44,14 +46,12 @@ const initialLoadingState = {
 }
 const loadingReducer = (state = {}, action) => {
   switch (action.type) {
-    case actions.FETCH_START:
+    case actions.FETCH_USER_PENDING:
       state = { ...state, loading: true, error: false }
       break;
     case actions.FETCH_USER_FULFILLED:
-      state = { ...state, loading: false, error: false }
-      break;
     case actions.FETCH_USER_REJECTED:
-      state = { ...state, loading: false, error: true }
+      state = { ...state, loading: false, error: false }
       break;
   }
   return state;
@@ -64,17 +64,11 @@ const reducers = combineReducers({
 
 let store = createStore(
   reducers,
-  applyMiddleware(thunk, logger)
+  applyMiddleware(promise(), thunk, logger)
 )
 
 
-store.dispatch((dispatch) => {
-  dispatch({ type: actions.FETCH_START });
-  axios.get("http://rest.learncode.academy/api/wstern/users")
-    .then((response) => {
-      dispatch({ type: actions.FETCH_USER_FULFILLED, payload: response.data })
-    })
-    .catch((err) => {
-      dispatch({ type: actions.FETCH_USER_REJECTED, payload: err })
-    });
+store.dispatch({
+  type: actions.FETCH_USER,
+  payload: axios.get("http://rest.learncode.academy/api/wstern/users")
 });
